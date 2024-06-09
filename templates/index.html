@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search by BIB Number</title>
+      <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
+</head>
+<body>
+    <div class="container">
+        <h1>Search by BIB number</h1>
+        <div class="search-container">
+            <form method="post" action="/search">
+                <label for="bib-input"></label><input type="text" name="bib_number" placeholder="Enter BIB no..." id="bib-input">
+                <button type="submit" id="search-button">SEARCH</button>
+            </form>
+            <form action="#">
+                <button class="down"  id="download-button" disabled>Download</button>
+            </form>
+        </div>
+        {% if message %}
+            <p>{{ message }}</p>
+        {% endif %}
+        <div class="image-gallery">
+            {% for img in images %}
+                <img src="{{img}}" alt="{{img}}" class="gallery-image">
+            {% endfor %}
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const images = document.querySelectorAll('.gallery-image');
+            const downloadButton = document.getElementById('download-button');
+            let selectedImages = [];
+
+            images.forEach(image => {
+                image.addEventListener('click', function () {
+                    if (this.classList.contains('highlighted')) {
+                        this.classList.remove('highlighted');
+                        selectedImages = selectedImages.filter(img => img !== this.src);
+                    } else {
+                        this.classList.add('highlighted');
+                        selectedImages.push(this.src);
+                    }
+                    downloadButton.disabled = selectedImages.length === 0;
+                });
+            });
+
+            downloadButton.addEventListener('click', async function (e) {
+                e.preventDefault();
+                if (selectedImages.length > 0) {
+                    const zip = new JSZip();
+                    const imgFolder = zip.folder('images');
+
+                    for (const imgUrl of selectedImages) {
+                        const response = await fetch(imgUrl);
+                        const blob = await response.blob();
+                        const filename = imgUrl.split('/').pop();
+                        imgFolder.file(filename, blob);
+                    }
+
+                    zip.generateAsync({ type: 'blob' }).then(function (content) {
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(content);
+                        a.download = 'images.zip';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
